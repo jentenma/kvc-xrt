@@ -61,7 +61,7 @@ build_kmod_container() {
         --build-arg KVER=${KVC_KVER}                 \
         --build-arg KMODVER=${KMOD_SOFTWARE_VERSION} \
         --build-arg DRIVERVER=${KMOD_DRIVER_VERSION} \
-        --build-arg XRT_VERSION_RELEASE=${XRT_RPM_VERSION} \	
+        --build-arg XRT_VERSION_RELEASE=${XRT_RPM_VERSION} \
         ${KMOD_CONTAINER_BUILD_CONTEXT}
 
     # get rid of any dangling containers if they exist
