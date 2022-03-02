@@ -1,40 +1,15 @@
-[yosemite-el8-noarch]
-name=yosemite-el8-noarch
-baseurl=http://9.42.77.146/cobbler/repo_mirror/yosemite-el8-noarch
-skip_if_unavailable=1
-enabled=1
-priority=99
-gpgcheck=0
-skip_if_unavailable=1
+[codeready-builder-for-rhel-8-x86_64-rpms]
+name = Red Hat CodeReady Linux Builder for RHEL 8 x86_64 (RPMs)
+baseurl = https://cdn.redhat.com/content/dist/rhel8/$releasever/x86_64/codeready-builder/os
+enabled = 1
+gpgcheck = 1
+gpgkey = file:///etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+sslverify = 1
+sslcacert = /etc/rhsm/ca/redhat-uep.pem
+sslclientkey = /etc/pki/entitlement/8432043943710431777-key.pem
+sslclientcert = /etc/pki/entitlement/8432043943710431777.pem
+metadata_expire = 86400
+enabled_metadata = 1
 
-
-[yosemite-el8-x86_64]
-name=yosemite-el8-x86_64
-baseurl=http://9.42.77.146/cobbler/repo_mirror/yosemite-el8-x86_64
-skip_if_unavailable=1
-enabled=1
-priority=99
-gpgcheck=0
-skip_if_unavailable=1
-
-
-[sfv2-packages-noarch]
-name=sfv2-packages-noarch
-baseurl=http://9.42.77.146/cobbler/repo_mirror/sfv2-packages-noarch
-skip_if_unavailable=1
-enabled=1
-priority=99
-gpgcheck=0
-skip_if_unavailable=1
-
-
-[sfv2-packages-x86_64]
-name=sfv2-packages-x86_64
-baseurl=http://9.42.77.146/cobbler/repo_mirror/sfv2-packages-x86_64
-skip_if_unavailable=1
-enabled=1
-priority=99
-gpgcheck=0
-skip_if_unavailable=1
 
 
