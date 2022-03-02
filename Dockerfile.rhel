@@ -1,0 +1,55 @@
+FROM registry.access.redhat.com/ubi8:latest
+MAINTAINER "coreos@lists.fedoraproject.org"
+WORKDIR /build/
+
+# First update the base container to latest versions of everything
+ADD xrt.repo /etc/yum.repos.d/xrt.repo
+ADD xocl.mk xocl.mk
+ADD mgmtpf.mk mgmtpf.mk
+ADD userpf.mk userpf.mk
+RUN yum update -y
+RUN yum install -y cmake cmake-data cmake-rpm-macros libuv compat-libtiff3 \
+    gdb gnuplot gnutls-devel json-glib-devel libdrm-devel libjpeg-turbo-devel \
+    libtiff-devel perl python3-devel redhat-lsb opencv-core opencv-contrib \
+    opencv  curl-devel libdrm-devel \
+    zlib zlib-devel protobuf protobuf-compiler \
+    boost gcc-c++ gcc libstdc++ \
+    elfutils elfutils-libs elfutils-devel libffi libffi-devel \
+    cppcheck rapidjson-devel gtest gtest-devel zlib-static \
+    protobuf-devel boost-static
+
+# Expecting kmod software version as an input to the build
+ARG KMODVER
+ARG DRIVERVER
+ARG XRT_VERSION_RELEASE
+
+# Grab the software from upstream
+ADD https://github.com/Xilinx/XRT/archive/${KMODVER}.tar.gz ./file.tar.gz
+
+# ADD http://9.42.77.146/prvsn-files/xrt-${KMODVER}.tar.gz ./file.tar.gz
+RUN tar -x --strip-components=1 -f ./file.tar.gz
+
+# Expecting kernel version as an input to the build
+ARG KVER
+
+# Note, your host must have access to repos where kernel developement
+# packages can be installed. If it doesn't the following steps will
+# fail
+
+# Prep and build the module
+RUN src/runtime_src/tools/scripts/xrtdeps.sh
+RUN yum install -y make sudo opencl-headers tcsh libxml2 libxml2-devel
+RUN rpm -q -i opencl-headers
+RUN build/build.sh
+RUN cat /etc/os-release
+RUN rpm -ivh build/Release/xrt_${XRT_VERSION_RELEASE}.${DRIVERVER}_`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`-x86_64-xrt.rpm
+# RUN sed -i "s/XRT_DRIVER_VERSION \"${DRIVERVER},\"/XRT_DRIVER_VERSION \"${DRIVERVER}\"/g" /usr/src/xrt-${DRIVERVER}/driver/include/version.h
+RUN cat /usr/src/xrt-${DRIVERVER}/driver/include/version.h
+
+RUN cat mgmtpf.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/mgmtpf/Makefile
+RUN cat userpf.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/userpf/Makefile
+RUN cat xocl.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/Makefile
+
+RUN make -C /usr/src/xrt-${DRIVERVER}/driver/xocl buildprep KVER=${KVER} KMODVER=${DRIVERVER}
+RUN make -C /usr/src/xrt-${DRIVERVER}/driver/xocl kvcall       KVER=${KVER} KMODVER=${DRIVERVER}
+RUN make -C /usr/src/xrt-${DRIVERVER}/driver/xocl kvcinstall   KVER=${KVER} KMODVER=${DRIVERVER}
