@@ -3,20 +3,31 @@ MAINTAINER "coreos@lists.fedoraproject.org"
 WORKDIR /build/
 
 # First update the base container to latest versions of everything
-ADD xrt.repo /etc/yum.repos.d/xrt.repo
+# ADD xrt.repo /etc/yum.repos.d/xrt.repo
 ADD xocl.mk xocl.mk
 ADD mgmtpf.mk mgmtpf.mk
 ADD userpf.mk userpf.mk
 RUN yum update -y
+# enable the codeready-builder repo
+RUN dnf config-manager --set-enabled codeready-builder-for-rhel-8-x86_64-rpms
+# reset yum
+RUN yum clean expire-cache
+# s/b three repos enabled now
+RUN cat /etc/yum.repos.d/redhat.repo | grep "enabled = 1"
+
+# These may or may not get installed by xrtdeps.sh. Just leaving here for now.
 RUN yum install -y cmake cmake-data cmake-rpm-macros libuv compat-libtiff3 \
     gdb gnuplot gnutls-devel json-glib-devel libdrm-devel libjpeg-turbo-devel \
     libtiff-devel perl python3-devel redhat-lsb opencv-core opencv-contrib \
     opencv  curl-devel libdrm-devel \
     zlib zlib-devel protobuf protobuf-compiler \
     boost gcc-c++ gcc libstdc++ \
-    elfutils elfutils-libs elfutils-devel libffi libffi-devel
-#    cppcheck rapidjson-devel gtest gtest-devel zlib-static \
-#    protobuf-devel boost-static
+    elfutils elfutils-libs elfutils-devel libffi libffi-devel \
+    cppcheck gtest gtest-devel zlib-static \
+    protobuf-devel boost-static
+
+# Can't find this anymore but it doesn't seem to matter.
+# rapidjson-devel 
 
 # Expecting kmod software version as an input to the build
 ARG KMODVER
@@ -25,8 +36,6 @@ ARG XRT_VERSION_RELEASE
 
 # Grab the software from upstream
 ADD https://github.com/Xilinx/XRT/archive/${KMODVER}.tar.gz ./file.tar.gz
-
-# ADD http://9.42.77.146/prvsn-files/xrt-${KMODVER}.tar.gz ./file.tar.gz
 RUN tar -x --strip-components=1 -f ./file.tar.gz
 
 # Expecting kernel version as an input to the build
@@ -40,7 +49,9 @@ ARG KVER
 RUN src/runtime_src/tools/scripts/xrtdeps.sh
 RUN ls /etc/yum.repos.d
 RUN cat /etc/yum.repos.d/redhat.repo | grep codeready
-RUN yum clean expire-cache
+# RUN yum clean expire-cache
+# RUN yum whatprovides cppcheck
+# RUN yum whatprovides opencl-headers
 RUN yum install -y make sudo opencl-headers tcsh libxml2 libxml2-devel
 # RUN rpm -q -i opencl-headers
 RUN build/build.sh
