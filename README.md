@@ -1,4 +1,4 @@
-# kvc-simple-kmod
+# kvc-xrt
 
 This is a [kmods-via-containers](https://github.com/kmods-via-containers/kmods-via-containers)
 implementation for [XRT](https://github.com/xilinx/XRT) specifically the drivers xocl and xclmgmt.
@@ -24,3 +24,9 @@ systemctl enable kmods-via-containers@xrt.service
 systemctl start kmods-via-containers@xrt.service
 lsmod | grep xocl
 lsmod | grep xclmgmt
+
+Note that all of the artifacts that come with building XRT are present in the container.
+These can in theory be extracted and used for other containers.
+
+The Dockerfile can aslo be modified and used as a template for a podman image for development
+purposes.
