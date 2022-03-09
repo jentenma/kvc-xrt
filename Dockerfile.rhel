@@ -24,7 +24,7 @@ RUN yum install -y cmake cmake-data cmake-rpm-macros libuv compat-libtiff3 \
     boost gcc-c++ gcc libstdc++ \
     elfutils elfutils-libs elfutils-devel libffi libffi-devel \
     cppcheck gtest gtest-devel zlib-static \
-    protobuf-devel boost-static
+    protobuf-devel boost-static git
 
 # Can't find this anymore but it doesn't seem to matter.
 # rapidjson-devel 
@@ -35,9 +35,12 @@ ARG DRIVERVER
 ARG XRT_VERSION_RELEASE
 
 # Grab the software from upstream
-ADD https://github.com/Xilinx/XRT/archive/${KMODVER}.tar.gz ./file.tar.gz
-RUN tar -x --strip-components=1 -f ./file.tar.gz
+# ADD https://github.com/Xilinx/XRT/archive/${KMODVER}.tar.gz ./file.tar.gz
+# RUN tar -x --strip-components=1 -f ./file.tar.gz
 
+RUN git clone https://github.com/Xilinx/xrt.git
+WORKDIR xrt
+RUN git checkout ${KMODVER}
 # Expecting kernel version as an input to the build
 ARG KVER
 
@@ -49,17 +52,14 @@ ARG KVER
 RUN src/runtime_src/tools/scripts/xrtdeps.sh
 RUN ls /etc/yum.repos.d
 RUN cat /etc/yum.repos.d/redhat.repo | grep codeready
-# RUN yum clean expire-cache
-# RUN yum whatprovides cppcheck
-# RUN yum whatprovides opencl-headers
 RUN yum install -y make sudo opencl-headers tcsh libxml2 libxml2-devel
-# RUN rpm -q -i opencl-headers
 RUN build/build.sh
 RUN cat /etc/os-release
 RUN rpm -ivh build/Release/xrt_${XRT_VERSION_RELEASE}.${DRIVERVER}_`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`-x86_64-xrt.rpm
-# RUN sed -i "s/XRT_DRIVER_VERSION \"${DRIVERVER},\"/XRT_DRIVER_VERSION \"${DRIVERVER}\"/g" /usr/src/xrt-${DRIVERVER}/driver/include/version.h
+
 RUN cat /usr/src/xrt-${DRIVERVER}/driver/include/version.h
 
+WORKDIR /build/
 RUN cat mgmtpf.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/mgmtpf/Makefile
 RUN cat userpf.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/userpf/Makefile
 RUN cat xocl.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/Makefile

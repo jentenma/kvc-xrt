@@ -99,7 +99,7 @@ build_kmods() {
         # built against the correct module software version
         # Note the tr to delete the trailing carriage return
         x=$(kvc_c_run $IMAGE modinfo -F version "/lib/modules/${KVC_KVER}/${module}.ko" | \
-		    sed 's/,//' | tr -d '\r')
+		    sed 's/,.*//' | tr -d '\r')
         if [ "${x}" != "${KMOD_DRIVER_VERSION}" ]; then
             echo "Module version mismatch within container: act=${x} exp=${KMOD_DRIVER_VERSION}. rebuilding ${IMAGE}"
             build_kmod_container
