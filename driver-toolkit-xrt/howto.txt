@@ -1,0 +1,59 @@
+#
+#  Following the instructions form here:
+#  https://docs.openshift.com/container-platform/4.8/scalability_and_performance/psap-driver-toolkit.html
+#
+
+# create new project
+oc new-project xrt-demo
+
+#
+# Use the 0000-buildconfig.yaml.template to create 0000-buildconfig.yaml
+# Replace above DRIVER_TOOLKIT_IMAGE with:
+#
+# OCP_VERSION 4.8.27 didn't work. 4.8.0 did.
+#
+# The 0000-buildconfig.yaml in this directory is already updated.
+#
+
+ OCP_VERSION=$(oc get clusterversion/version -ojsonpath={.status.desired.version})
+ DRIVER_TOOLKIT_IMAGE=$(oc adm release info $OCP_VERSION --image-for=driver-toolkit)
+ sed "s#DRIVER_TOOLKIT_IMAGE#${DRIVER_TOOLKIT_IMAGE}#" 0000-buildconfig.yaml.template > 0000-buildconfig.yaml
+
+Example:
+-----------------------------------------------------------------------------------------------
+[root@tr03-node1 ~]# oc get clusterversion/version -ojsonpath={.status.desired.version}
+4.8.27[root@tr03-node1 ~]#
+
+# it errors out
+[root@tr03-node1 ~]# oc adm release info 4.8.27 --image-for=driver-toolkit
+error: unable to connect to image repository hub.fbond:5000/ocp4/openshift4@sha256:36061ae9ccad77bbae491de8bf50be45eeb3409c5d596f63c445e72db43a872d: Get "https://hub.fbond:5000/v2/": x509: certificate relies on legacy Common Name field, use SANs or temporarily enable Common Name matching with GODEBUG=x509ignoreCN=0
+
+# replace with 4.8.0
+[root@tr03-node1 ~]# oc adm release info 4.8.0 --image-for=driver-toolkit
+quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:e0f9b9154538af082596f60af99290b5a751e61fd61100912defb71b6cac15c6
+[root@tr03-node1 ~]# 
+
+Now change DRIVER_TOOLKIT_IMAGE in 0000-buildconfig.yaml to:
+quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:e0f9b9154538af082596f60af99290b5a751e61fd61100912defb71b6cac15c6
+
+------------------------------------------------------------------------------------------------
+# create image stream and build config
+oc create -f 0000-buildconfig.yaml
+
+# after pod builder completes
+# Create RBAC rules and daemon set
+oc create -f 1000-drivercontainer.yaml
+
+# sample output
+NAME                         READY   STATUS      RESTARTS   AGE
+xrt-driver-build-1-build     0/1     Completed   0          6m
+xrt-driver-container-b22fd   1/1     Running     0          40s
+xrt-driver-container-jz9vn   1/1     Running     0          40s
+xrt-driver-container-p45cc   1/1     Running     0          40s
+
+# Verify pods are running
+oc get pod -n xrt-demo
+
+# execute lsmod in the driver container
+oc exec -it pod/xrt-driver-container-p45cc -- lsmod | grep xocl
+oc exec -it pod/xrt-driver-container-p45cc -- lsmod | grep xclmgmt

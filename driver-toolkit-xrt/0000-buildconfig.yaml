@@ -1,0 +1,115 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  labels:
+    app: xrt-driver-container
+  name: xrt-driver-container
+  namespace: xrt-demo
+spec: {}
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  labels:
+    app: xrt-driver-build
+  name: xrt-driver-build
+  namespace: xrt-demo
+spec:
+  nodeSelector:
+    node-role.kubernetes.io/worker: ""
+  runPolicy: "Serial"
+  triggers:
+    - type: "ConfigChange"
+    - type: "ImageChange"
+  source:
+    git:
+      ref: "master"
+      uri: "https://github.com/jentenma/kvc-xrt.git"
+    type: Git
+    dockerfile: |
+      FROM quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:e6c2366fdedf7479676043f58b801be9379f75aaf4b6e40d63b021719c19e45e
+
+      WORKDIR /build/
+      
+      ADD xocl.mk xocl.mk
+      ADD mgmtpf.mk mgmtpf.mk
+      ADD userpf.mk userpf.mk
+      RUN yum update -y
+
+      # enable the codeready-builder repo
+      RUN dnf config-manager --set-enabled codeready-builder-for-rhel-8-x86_64-rpms
+
+      # reset yum
+      RUN yum clean expire-cache
+      
+      # s/b three repos enabled now
+      RUN cat /etc/yum.repos.d/redhat.repo | grep "enabled = 1"
+
+      # These may or may not get installed by xrtdeps.sh. Just leaving here for now.
+      RUN yum install -y cmake cmake-data cmake-rpm-macros libuv compat-libtiff3 \
+      gdb gnuplot gnutls-devel json-glib-devel libdrm-devel libjpeg-turbo-devel \
+      libtiff-devel perl python3-devel redhat-lsb opencv-core opencv-contrib \
+      opencv  curl-devel libdrm-devel \
+      zlib zlib-devel protobuf protobuf-compiler \
+      boost gcc-c++ gcc libstdc++ \
+      elfutils elfutils-libs elfutils-devel libffi libffi-devel \
+      cppcheck gtest gtest-devel zlib-static \
+      protobuf-devel boost-static git
+
+      # Expecting kmod software version as an input to the build
+      ARG KMODVER
+      ARG DRIVERVER
+      ARG XRT_VERSION_RELEASE
+
+      # Grab the software from upstream
+      # ADD https://github.com/Xilinx/XRT/archive/${KMODVER}.tar.gz ./file.tar.gz
+      # RUN tar -x --strip-components=1 -f ./file.tar.gz
+
+      RUN git clone https://github.com/Xilinx/xrt.git
+      WORKDIR xrt
+      RUN git checkout ${KMODVER}
+
+      RUN src/runtime_src/tools/scripts/xrtdeps.sh
+      RUN yum install -y make sudo opencl-headers tcsh libxml2 libxml2-devel
+      RUN build/build.sh
+      RUN cat /etc/os-release
+      RUN rpm -ivh build/Release/xrt_${XRT_VERSION_RELEASE}.${DRIVERVER}_`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`-x86_64-xrt.rpm
+
+      RUN cat /usr/src/xrt-${DRIVERVER}/driver/include/version.h
+
+      WORKDIR /build/
+      RUN cat mgmtpf.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/mgmtpf/Makefile
+      RUN cat userpf.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/userpf/Makefile
+      RUN cat xocl.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/Makefile
+
+      RUN make -C /usr/src/xrt-${DRIVERVER}/driver/xocl buildprep KVER=$(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}"  kernel-core) KMODVER=${DRIVERVER}
+      RUN make -C /usr/src/xrt-${DRIVERVER}/driver/xocl kvcall       KVER=$(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}"  kernel-core) KMODVER=${DRIVERVER}
+      RUN make -C /usr/src/xrt-${DRIVERVER}/driver/xocl kvcinstall   KVER=$(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}"  kernel-core) KMODVER=${DRIVERVER}
+
+      # Add the helper tools
+      WORKDIR /root/xrt
+      ADD Makefile .
+      ADD xrt-lib.sh .
+      ADD xrt-wrapper.sh .
+      ADD xrt.conf .
+      RUN mkdir -p /usr/lib/kvc/ \
+      && mkdir -p /etc/kvc/ \
+      && make install
+
+      RUN systemctl enable kmods-via-containers@xrt
+
+  strategy:
+    dockerStrategy:
+      buildArgs:
+        - name: KMODVER
+          value: 37518a9da
+        - name: DRIVERVER
+          value: 2.13.0
+        - name: XRT_VERSION_RELEASE
+          value: 202210
+
+  output:
+    to:
+      kind: ImageStreamTag
+      name: xrt-driver-container:demo
+
