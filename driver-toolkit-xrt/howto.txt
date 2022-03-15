@@ -57,3 +57,61 @@ oc get pod -n xrt-demo
 # execute lsmod in the driver container
 oc exec -it pod/xrt-driver-container-p45cc -- lsmod | grep xocl
 oc exec -it pod/xrt-driver-container-p45cc -- lsmod | grep xclmgmt
+
+
+###################
+###################
+
+
+TODO: Get the repos from registering Redhat to the Pods.
+
+In place if that we point to the repos in the lab. See the section on config maps
+
+See below 
+ 
+  subscription-manager register
+  subscription-manager attach --auto
+  ls -als /etc/pki/entitlement/
+
+ # 
+ # config maps will make a file that can be added to the WORKDIR /build (default) 
+ # refer to configmaps for other options
+ #
+ #       ADD cobbler-config.repo redhatX.repo
+ #
+
+ oc delete configmap cobbler-repos
+ oc create configmap cobbler-repos --from-file /home/cobbler/kmods-git/kvc-xrt/driver-toolkit-xrt/cobbler-config.repo 
+ 
+ # starting over delet stuff
+ oc logs -f xrt-driver-build-1-build
+ oc delete pod xrt-driver-build-1-build 
+ oc delete -f 0000-buildconfig.yaml
+
+ oc create -f 0000-buildconfig.yaml
+ oc logs -f xrt-driver-build-1-build
+ oc create -f 1000-drivercontainer.yaml 
+
+ oc get pod -n xrt-demo
+
+/ssh:root@e1n1: #$ oc get pods
+NAME                        READY   STATUS      RESTARTS   AGE
+xrt-driver-build-1-build     0/1     Completed   0          80m
+xrt-driver-container-4264l   1/1     Running     0          60m
+xrt-driver-container-9glj7   1/1     Running     0          60m
+xrt-driver-container-b5rf9   1/1     Running     0          60m
+xrt-driver-container-dzpxk   1/1     Running     0          60m
+xrt-driver-container-xhcj4   1/1     Running     0          60m
+
+
+#
+# Some commands to run on a pod
+#
+ oc exec -it pod/xrt-driver-container-4264l -- lsmod | grep xocl
+ oc exec -it pod/xrt-driver-container-4264l -- lsmod | grep xclmgmt
+ oc exec -it pod/xrt-driver-container-4264l -- systemctl status kmods-via-containers@xrt.service
+ oc exec -it pod/xrt-driver-container-4264l -- modinfo -F version xocl
+ oc exec -it pod/xrt-driver-container-4264l -- modinfo -F vermagic xocl
+ oc exec -it pod/xrt-driver-container-4264l -- uname -r
+ oc exec -it pod/xrt-driver-container-4264l -- systemctl status kmods-via-containers@xrt.service
+ oc exec -it pod/xrt-driver-container-n9v52 -- /bin/bash

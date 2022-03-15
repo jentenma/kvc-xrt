@@ -22,28 +22,38 @@ spec:
     - type: "ConfigChange"
     - type: "ImageChange"
   source:
+    configMaps:
+      - configMap:
+          name: yum-repos-d
+      - configMap:
+          name: cobbler-repos
     git:
       ref: "master"
       uri: "https://github.com/jentenma/kvc-xrt.git"
     type: Git
     dockerfile: |
       FROM DRIVER_TOOLKIT_IMAGE
-
       WORKDIR /build/
-      
+
+      ADD cobbler-config.repo redhatX.repo
+      RUN cat redhatX.repo >> /etc/yum.repos.d/redhat.repo
       ADD xocl.mk xocl.mk
       ADD mgmtpf.mk mgmtpf.mk
       ADD userpf.mk userpf.mk
-      RUN yum update -y
+      # RUN yum update -y
 
       # enable the codeready-builder repo
-      RUN dnf config-manager --set-enabled codeready-builder-for-rhel-8-x86_64-rpms
+       #RUN dnf config-manager --set-enabled codeready-builder-for-rhel-8-x86_64-rpms
+      RUN yum repolist
+      RUN ls /etc/yum.repos.d
+      RUN cat /etc/yum.repos.d/redhat.repo
+      RUN cat /etc/yum.repos.d/ubi.repo
 
       # reset yum
       RUN yum clean expire-cache
       
       # s/b three repos enabled now
-      RUN cat /etc/yum.repos.d/redhat.repo | grep "enabled = 1"
+      # RUN cat /etc/yum.repos.d/redhat.repo | grep "enabled = 1"
 
       # These may or may not get installed by xrtdeps.sh. Just leaving here for now.
       RUN yum install -y cmake cmake-data cmake-rpm-macros libuv compat-libtiff3 \
@@ -69,8 +79,14 @@ spec:
       WORKDIR xrt
       RUN git checkout ${KMODVER}
 
-      RUN src/runtime_src/tools/scripts/xrtdeps.sh
-      RUN yum install -y make sudo opencl-headers tcsh libxml2 libxml2-devel
+      RUN cat /etc/os-release
+      RUN yum install -y make sudo opencl-headers tcsh libxml2 libxml2-devel \
+          dkms glibc-static libstdc++-static libuuid-devel libyaml-devel lm_sensors\
+          ncurses-devel ocl-icd ocl-icd-devel opencl-headers openssl-devel pkgconfig \
+          python3 python3-devel rapidjson-devel rpm-build strace systemd-devel
+
+      RUN pip3 install -U pybind11	 
+      RUN src/runtime_src/tools/scripts/xrtdeps.sh -validate
       RUN build/build.sh
       RUN cat /etc/os-release
       RUN rpm -ivh build/Release/xrt_${XRT_VERSION_RELEASE}.${DRIVERVER}_`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`-x86_64-xrt.rpm
@@ -101,12 +117,12 @@ spec:
   strategy:
     dockerStrategy:
       buildArgs:
-        - name: KMODVER
-          value: 37518a9da
-        - name: DRIVERVER
-          value: 2.13.0
-        - name: XRT_VERSION_RELEASE
-          value: 202210
+        - name: "KMODVER"
+          value: "37518a9da"
+        - name: "DRIVERVER"
+          value: "2.13.0"
+        - name: "XRT_VERSION_RELEASE"
+          value: "202210"
 
   output:
     to:
