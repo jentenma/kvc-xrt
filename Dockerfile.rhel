@@ -14,6 +14,7 @@ RUN dnf config-manager --set-enabled codeready-builder-for-rhel-8-x86_64-rpms
 RUN yum clean expire-cache
 # s/b three repos enabled now
 RUN cat /etc/yum.repos.d/redhat.repo | grep "enabled = 1"
+# RUN cat /etc/yum.repos.d/ubi.repo
 
 # These may or may not get installed by xrtdeps.sh. Just leaving here for now.
 RUN yum install -y cmake cmake-data cmake-rpm-macros libuv compat-libtiff3 \
@@ -24,10 +25,10 @@ RUN yum install -y cmake cmake-data cmake-rpm-macros libuv compat-libtiff3 \
     boost gcc-c++ gcc libstdc++ \
     elfutils elfutils-libs elfutils-devel libffi libffi-devel \
     cppcheck gtest gtest-devel zlib-static \
-    protobuf-devel boost-static git
+    protobuf-devel boost-static git rpm-build
 
 # Can't find this anymore but it doesn't seem to matter.
-# rapidjson-devel 
+#  rapidjson-devel 
 
 # Expecting kmod software version as an input to the build
 ARG KMODVER
@@ -52,7 +53,8 @@ ARG KVER
 RUN src/runtime_src/tools/scripts/xrtdeps.sh
 RUN ls /etc/yum.repos.d
 RUN cat /etc/yum.repos.d/redhat.repo | grep codeready
-RUN yum install -y make sudo opencl-headers tcsh libxml2 libxml2-devel
+RUN yum install -y make sudo opencl-headers tcsh libxml2 libxml2-devel \
+    ocl-icd ocl-icd-devel ncurses-devel openssl-devel rapidjson-devel libuuid-devel libudev-devel systemd-devel dkms libyaml-devel
 RUN build/build.sh
 RUN cat /etc/os-release
 RUN rpm -ivh build/Release/xrt_${XRT_VERSION_RELEASE}.${DRIVERVER}_`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`-x86_64-xrt.rpm
@@ -67,3 +69,4 @@ RUN cat xocl.mk >> /usr/src/xrt-${DRIVERVER}/driver/xocl/Makefile
 RUN make -C /usr/src/xrt-${DRIVERVER}/driver/xocl buildprep KVER=${KVER} KMODVER=${DRIVERVER}
 RUN make -C /usr/src/xrt-${DRIVERVER}/driver/xocl kvcall       KVER=${KVER} KMODVER=${DRIVERVER}
 RUN make -C /usr/src/xrt-${DRIVERVER}/driver/xocl kvcinstall   KVER=${KVER} KMODVER=${DRIVERVER}
+
