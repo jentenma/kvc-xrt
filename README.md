@@ -6,7 +6,7 @@ implementation for [XRT](https://github.com/xilinx/XRT) specifically the drivers
 A full example of how to apply an example [simple-kmod](https://github.com/kmods-via-containers/simple-kmod) is documented in the
 [kmods-via-containers README](https://github.com/kmods-via-containers/kmods-via-containers#example).
 
-This is only an implmentation for RHEL8 as that as what it has been tested against. It relies on access to
+This is only an implmentation for RHEL8.5 as that as what it has been tested against. It relies on access to
 the Redhat repos that come with the registration of the host system.  It was tested using podman. 
 
 
