@@ -9,6 +9,7 @@ A full example of how to apply an example [simple-kmod](https://github.com/kmods
 This is only an implmentation for RHEL8 as that as what it has been tested against. It relies on access to
 the Redhat repos that come with the registration of the host system.  It was tested using podman. 
 
+
 The container build will:
 * build XRT
 * Install the XRT rpm in the container
@@ -18,13 +19,14 @@ The container build will:
 After podman and kmods-via-containers have been installed on the host
 
 In the directory where this repo has been cloned to:
+```
 make install
 kmods-via-containers build xrt $(uname -r)
 systemctl enable kmods-via-containers@xrt.service
 systemctl start kmods-via-containers@xrt.service
 lsmod | grep xocl
 lsmod | grep xclmgmt
-
+```
 Note that all of the artifacts that come with building XRT are present in the container.
 These can in theory be extracted and used for other containers.
 
